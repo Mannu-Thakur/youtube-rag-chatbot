@@ -47,9 +47,17 @@ if st.sidebar.button("Build / Refresh Index"):
                 vectorstore = create_vectorstore(documents, embeddings, video_ids)
 
             llm = load_llm()
-            retriever = create_retriever(vectorstore, llm, k=3, use_multi_query=True)
+            retriever = create_retriever(
+                vectorstore,
+                llm,
+                k=3,
+                use_multi_query=True,
+            )
+
             st.session_state.rag_chain = create_rag_chain(llm, retriever)
+
             st.sidebar.success("Ready")
+
         except Exception as exc:
             st.sidebar.error(str(exc))
 
@@ -62,34 +70,64 @@ for message in st.session_state.messages:
         st.write(message["content"])
 
 user_query = st.chat_input("Ask a question about the videos")
+
 if user_query:
-    st.session_state.messages.append({"role": "user", "content": user_query})
+
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": user_query,
+        }
+    )
 
     with st.chat_message("user"):
         st.write(user_query)
 
     with st.spinner("Searching and answering..."):
-        retrieval_query = build_retrieval_query(user_query, st.session_state.memory)
-        response = st.session_state.rag_chain.invoke({"input": retrieval_query})
 
-    answer = response["answer"]
-    st.session_state.memory.add_turn(user_query, answer)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+        retrieval_query = build_retrieval_query(
+            user_query,
+            st.session_state.memory,
+        )
 
-    with st.chat_message("assistant"):
-        st.write(answer)
+        response = st.session_state.rag_chain.invoke(retrieval_query)
+
+        answer = response["answer"]
 
         docs = response.get("context", [])
+
+    st.session_state.memory.add_turn(user_query, answer)
+
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": answer,
+        }
+    )
+
+    with st.chat_message("assistant"):
+
+        st.write(answer)
+
         if docs:
             with st.expander("Sources"):
+
                 for i, doc in enumerate(docs, start=1):
+
                     meta = doc.metadata or {}
+
                     vid = meta.get("video_id", "")
+
                     start_sec = int(meta.get("start_seconds", 0))
+
                     time_range = meta.get("time_range", "")
-                    youtube_link = f"https://www.youtube.com/watch?v={vid}&t={start_sec}s"
+
+                    youtube_link = (
+                        f"https://www.youtube.com/watch?v={vid}&t={start_sec}s"
+                    )
 
                     st.markdown(
                         f"**{i}.** [`{vid}`]({youtube_link}) — `{time_range}`"
                     )
+
                     st.write(doc.page_content[:300])

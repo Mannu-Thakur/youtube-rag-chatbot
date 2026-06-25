@@ -1,6 +1,6 @@
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
 
 def create_rag_chain(llm, retriever):
@@ -16,18 +16,39 @@ Context:
 {context}
 
 Question:
-{input}
+{question}
 """
     )
 
-    document_prompt = PromptTemplate.from_template(
-        "[video_id={video_id} | {time_range}]\n{page_content}"
+    def format_docs(docs):
+        if not docs:
+            return "No relevant context retrieved."
+
+        return "\n\n".join(
+            f"[video_id={doc.metadata.get('video_id', 'N/A')} | "
+            f"{doc.metadata.get('time_range', 'N/A')}]\n"
+            f"{doc.page_content}"
+            for doc in docs
+        )
+
+    answer_chain = (
+        RunnableLambda(
+            lambda x: {
+                "context": format_docs(x["context"]),
+                "question": x["question"],
+            }
+        )
+        | prompt
+        | llm
+        | StrOutputParser()
     )
 
-    document_chain = create_stuff_documents_chain(
-        llm,
-        prompt,
-        document_prompt=document_prompt,
+    chain = (
+        RunnableParallel(
+            context=retriever,
+            question=RunnablePassthrough(),
+        )
+        | RunnablePassthrough.assign(answer=answer_chain)
     )
 
-    return create_retrieval_chain(retriever, document_chain)
+    return chain
