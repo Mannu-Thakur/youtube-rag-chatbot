@@ -199,21 +199,7 @@ youtube-rag-chatbot/
 * PDF + YouTube RAG
 * LangGraph Agents
 * Streaming Responses
-
-## Author
-=======
-├── utils/
-│   ├── helper.py
-│   └── video_utils.py
-│
-├── faiss_index/
-│
-└── data/
-    └── cache/
-```
-
----
-
+ 
 # 📦 Installation
 
 Clone the repository:
