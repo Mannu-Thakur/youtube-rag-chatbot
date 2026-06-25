@@ -164,8 +164,7 @@ Users can verify where the answer came from.
 ---
 
 # 📁 Project Structure
->>>>>>> 7d525a9 (Add project documentation)
-
+ 
 ```text
 youtube-rag-chatbot/
 │
